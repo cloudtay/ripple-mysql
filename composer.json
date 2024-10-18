@@ -1,8 +1,8 @@
 {
-  "name": "cclilshy/ripple-mysql",
+  "name": "cloudtay/ripple-rdo",
   "autoload": {
     "psr-4": {
-      "Ripple\\App\\MySQL\\": "src/"
+      "Ripple\\": "src/"
     }
   },
   "authors": [
@@ -11,8 +11,14 @@
       "email": "jingnigg@gmail.com"
     }
   ],
+  "require": {
+    "ext-pdo": "*",
+    "cloudtay/ripple": "^1.0.0",
+    "ext-openssl": "*"
+  },
   "require-dev": {
-    "cloudtay/ripple": "0.8.x-dev",
     "friendsofphp/php-cs-fixer": "^3.64"
-  }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
 }

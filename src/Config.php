@@ -1,6 +1,16 @@
 <?php declare(strict_types=1);
+/**
+ * Copyright © 2024 cclilshy
+ * Email: jingnigg@gmail.com
+ *
+ * This software is licensed under the MIT License.
+ * For full license details, please visit: https://opensource.org/licenses/MIT
+ *
+ * By using this software, you agree to the terms of the license.
+ * Contributions, suggestions, and feedback are always welcome!
+ */
 
-namespace Ripple\App\MySQL;
+namespace Ripple;
 
 use InvalidArgumentException;
 
@@ -9,15 +19,15 @@ use function parse_str;
 use function str_replace;
 use function strval;
 
-class Config
+readonly class Config
 {
     public function __construct(
-        public readonly string $host,
-        public readonly int    $port,
-        public readonly string $user,
-        public readonly string $password,
-        public readonly string $database,
-        public readonly string $charset
+        public string $host,
+        public int    $port,
+        public string $user,
+        public string $password,
+        public string $database,
+        public string $charset
     ) {
     }
 
@@ -55,7 +65,7 @@ class Config
      * @param string $username
      * @param string $password
      *
-     * @return \Ripple\App\MySQL\Config
+     * @return \Ripple\Config
      */
     public static function formString(string $config, string $username, string $password): Config
     {
@@ -87,7 +97,7 @@ class Config
             strval($host),
             intval($port),
             $username,
-            strval($password),
+            $password,
             strval($dbname),
             strval($charset),
         );

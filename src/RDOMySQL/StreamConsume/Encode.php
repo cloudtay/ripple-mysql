@@ -1,6 +1,16 @@
 <?php declare(strict_types=1);
+/**
+ * Copyright © 2024 cclilshy
+ * Email: jingnigg@gmail.com
+ *
+ * This software is licensed under the MIT License.
+ * For full license details, please visit: https://opensource.org/licenses/MIT
+ *
+ * By using this software, you agree to the terms of the license.
+ * Contributions, suggestions, and feedback are always welcome!
+ */
 
-namespace Ripple\App\MySQL\StreamConsume;
+namespace Ripple\RDOMySQL\StreamConsume;
 
 use InvalidArgumentException;
 
@@ -20,6 +30,38 @@ use function strlen;
  */
 class Encode
 {
+    public const  Decimal = 0x00;
+    public const  Tiny = 0x01;
+    public const  Short = 0x02;
+    public const  Long = 0x03;
+    public const  Float = 0x04;
+    public const  Double = 0x05;
+    public const  Null = 0x06;
+    public const  Timestamp = 0x07;
+    public const  LongLong = 0x08;
+    public const  Int24 = 0x09;
+    public const  Date = 0x0a;
+    public const  Time = 0x0b;
+    public const  Datetime = 0x0c;
+    public const  Year = 0x0d;
+    public const  NewDate = 0x0e; // Internal, not used in protocol, see Date
+    public const  Varchar = 0x0f;
+    public const  Bit = 0x10;
+    public const  Timestamp2 = 0x11; // Internal, not used in protocol, see Timestamp
+    public const  Datetime2 = 0x12; // Internal, not used in protocol, see DateTime
+    public const  Time2 = 0x13; // Internal, not used in protocol, see Time
+    public const  Json = 0xf5;
+    public const  NewDecimal = 0xf6;
+    public const  Enum = 0xf7;
+    public const  Set = 0xf8;
+    public const  TinyBlob = 0xf9;
+    public const  MediumBlob = 0xfa;
+    public const  LongBlob = 0xfb;
+    public const  Blob = 0xfc;
+    public const  VarString = 0xfd;
+    public const  String = 0xfe;
+    public const  Geometry = 0xff;
+
     public const INT_1 = 0x01;
     public const INT_2 = 0x02;
     public const INT_3 = 0x03;
@@ -80,15 +122,15 @@ class Encode
     }
 
     /**
-     * Encodes a length-encoded string.
+     * @param string $str
      *
-     * @param string $value The string to encode.
-     *
-     * @return string The encoded length-encoded string.
+     * @return string
      */
-    public static function LengthEncodedString(string $value): string
+    public static function VariableLengthString(string $str): string
     {
-        return self::LengthEncodedInteger(strlen($value)) . $value;
+        $length = strlen($str);
+        $lengthEncoded = self::LengthEncodedInteger($length);
+        return $lengthEncoded . $str;
     }
 
     /**
@@ -112,16 +154,14 @@ class Encode
     }
 
     /**
-     * Builds a packet from the given context and sequence ID.
+     * Encodes a length-encoded string.
      *
-     * @param string $context    The content to include in the packet.
-     * @param int    $sequenceId The sequence ID for the packet.
+     * @param string $value The string to encode.
      *
-     * @return string The encoded packet.
+     * @return string The encoded length-encoded string.
      */
-    public static function packet(string $context, int $sequenceId): string
+    public static function LengthEncodedString(string $value): string
     {
-        $length = strlen($context);
-        return pack('V', $length) . pack('C', $sequenceId) . $context;
+        return self::LengthEncodedInteger(strlen($value)) . $value;
     }
 }

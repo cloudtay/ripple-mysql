@@ -1,6 +1,16 @@
 <?php declare(strict_types=1);
+/**
+ * Copyright © 2024 cclilshy
+ * Email: jingnigg@gmail.com
+ *
+ * This software is licensed under the MIT License.
+ * For full license details, please visit: https://opensource.org/licenses/MIT
+ *
+ * By using this software, you agree to the terms of the license.
+ * Contributions, suggestions, and feedback are always welcome!
+ */
 
-namespace Ripple\App\MySQL\Encrypt;
+namespace Ripple\RDOMySQL;
 
 use function hash;
 use function password_hash;
@@ -13,7 +23,7 @@ use const PASSWORD_BCRYPT;
 /**
  * @see https://dev.mysql.com/doc/dev/mysql-server/latest/dir_224962caae460612c2a6474fa64a2b05.html
  */
-class Encode
+class Encryptor
 {
     /**
      * Use native password encryption algorithms.
@@ -45,9 +55,9 @@ class Encode
      */
     public static function sha2Password(string $password, string $salt): string
     {
-        $digestStage1 = self::hashSHA256($password);
-        $digestStage2 = self::hashSHA256($digestStage1);
-        $saltStage1   = self::hashSHA256($digestStage2 . substr($salt, 0, 20));
+        $digestStage1 = Encryptor::hashSHA256($password);
+        $digestStage2 = Encryptor::hashSHA256($digestStage1);
+        $saltStage1   = Encryptor::hashSHA256($digestStage2 . substr($salt, 0, 20));
         return $digestStage1 ^ $saltStage1;
     }
 
@@ -76,7 +86,6 @@ class Encode
      */
     public static function sha1Password(string $password, string $salt): string
     {
-        // SHA-1 加密，后接盐值
         return sha1($password . $salt);
     }
 
