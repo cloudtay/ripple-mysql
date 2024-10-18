@@ -1,11 +1,21 @@
 <?php declare(strict_types=1);
+/**
+ * Copyright © 2024 cclilshy
+ * Email: jingnigg@gmail.com
+ *
+ * This software is licensed under the MIT License.
+ * For full license details, please visit: https://opensource.org/licenses/MIT
+ *
+ * By using this software, you agree to the terms of the license.
+ * Contributions, suggestions, and feedback are always welcome!
+ */
 
 namespace Ripple\App\MySQL\Constant;
 
 /**
  * @see https://dev.mysql.com/doc/dev/mysql-server/latest/group__group__cs__capabilities__flags.html
  */
-class Capabilities
+enum Capabilities
 {
     public const  CLIENT_LONG_PASSWORD                  = 1;         // 使用旧密码验证的改进版本。
     public const  CLIENT_FOUND_ROWS                     = 2;         // 发送 EOF_Packet 中找到的行而不是受影响的行。

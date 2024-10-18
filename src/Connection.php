@@ -1,10 +1,20 @@
 <?php declare(strict_types=1);
+/**
+ * Copyright © 2024 cclilshy
+ * Email: jingnigg@gmail.com
+ *
+ * This software is licensed under the MIT License.
+ * For full license details, please visit: https://opensource.org/licenses/MIT
+ *
+ * By using this software, you agree to the terms of the license.
+ * Contributions, suggestions, and feedback are always welcome!
+ */
 
 namespace Ripple\App\MySQL;
 
+use Closure;
 use Co\IO;
 use InvalidArgumentException;
-use Revolt\EventLoop\Suspension;
 use Ripple\App\MySQL\Constant\Capabilities;
 use Ripple\App\MySQL\Constant\Protocol;
 use Ripple\App\MySQL\Data\Statement;
@@ -13,20 +23,23 @@ use Ripple\App\MySQL\Exception\Exception;
 use Ripple\App\MySQL\Packet\EofPacket;
 use Ripple\App\MySQL\Packet\ErrPacket;
 use Ripple\App\MySQL\Packet\OkPacket;
+use Ripple\App\MySQL\PDO\PDO;
 use Ripple\App\MySQL\StreamConsume\Decode;
 use Ripple\App\MySQL\StreamConsume\Encode;
 use Ripple\Coroutine\Coroutine;
 use Ripple\Coroutine\WaitGroup;
 use Ripple\Socket\SocketStream;
 use Ripple\Stream\Exception\ConnectionException;
-use Ripple\Utils\Output;
 use Throwable;
 
 use function array_shift;
 use function Co\async;
+use function Co\cancel;
+use function Co\delay;
 use function Co\getSuspension;
 use function implode;
 use function in_array;
+use function intval;
 use function is_array;
 use function max;
 use function str_repeat;
@@ -35,22 +48,22 @@ use function substr;
 
 class Connection
 {
-    // 等待握手
+    // waiting for handshake
     public const STEP_HANDSHAKE = 0;
 
-    // 握手请求
+    // handshake request
     public const STEP_HANDSHAKE_REQUEST = 1;
 
-    // 握手响应
+    // handshake response
     public const STEP_HANDSHAKE_RESPONSE = 2;
 
-    // 等待交换请求
+    // waiting for exchange request
     public const STEP_AUTH_SWITCH_REQUEST = 3;
 
-    // 认证交换响应
+    // authentication exchange response
     public const STEP_AUTH_SWITCH_RESPONSE = 4;
 
-    // 已建立连接
+    // connection established
     public const STEP_ESTABLISHED = 5;
 
     /*** @var int */
@@ -107,20 +120,21 @@ class Connection
     /*** @var \Ripple\App\MySQL\Data\Statement[] */
     protected array $statements = [];
 
-    /*** @var \Revolt\EventLoop\Suspension */
-    private Suspension $suspension;
-
     /*** @var \Ripple\App\MySQL\Config */
     private Config $config;
+
+    /*** @var int */
+    private int $timeout = 0;
 
     /**
      * @param \Ripple\App\MySQL\Config|array|string $config
      * @param string|null                           $username
      * @param null                                  $password
+     * @param array $options
      *
      * @throws \Ripple\App\MySQL\Exception\Exception
      */
-    public function __construct(Config|array|string $config, string $username = null, $password = null)
+    public function __construct(Config|array|string $config, string $username = null, $password = null, array $options = [])
     {
         if ($config instanceof Config) {
             $this->config = $config;
@@ -132,16 +146,14 @@ class Connection
             $this->config = Config::formString($config, $username, $password);
         }
 
+        if (isset($options['timeout'])) {
+            $this->timeout = intval($options['timeout']);
+        } elseif (isset($options[PDO::ATTR_TIMEOUT])) {
+            $this->timeout = intval($options[PDO::ATTR_TIMEOUT]);
+        }
+
         $this->waitGroup = new WaitGroup();
         $this->connect();
-    }
-
-    /**
-     * @return int
-     */
-    public function getCapabilities(): int
-    {
-        return $this->clientCapabilities;
     }
 
     /**
@@ -166,36 +178,34 @@ class Connection
         $this->stream->setBlocking(false);
 
         async(function () {
-            $this->suspension = getSuspension();
-            $this->stream->onClose(function () {
-                $this->suspension->throw(new Exception("Connection closed."));
-                while ($suspension = array_shift($this->queue)) {
-                    $suspension->throw(new Exception("Connection closed."));
-                }
+            $suspension = getSuspension();
+            $this->stream->onClose(static function () use ($suspension) {
+                $suspension->throw(new Exception("Connection closed."));
             });
 
-            while (1) {
-                try {
-                    $this->stream->waitForReadable();
+            try {
+                while ($this->stream->waitForReadable()) {
                     $content = $this->stream->readContinuously(8192);
                     if ($content === '') {
                         break;
                     }
                     $this->transmitting($content);
-                } catch (Throwable $exception) {
-                    while ($suspension = array_shift($this->queue)) {
-                        $suspension->throw(
-                            new Exception(
-                                $exception->getMessage(),
-                                $exception->getCode(),
-                                $exception
-                            )
-                        );
-                    }
-                    break;
                 }
+
+                $exception = new Exception("Connection closed.");
+            } catch (Throwable $exception) {
             }
+
             $this->stream->close();
+            while ($suspension = array_shift($this->queue)) {
+                $suspension->throw(
+                    new Exception(
+                        $exception->getMessage(),
+                        $exception->getCode(),
+                        $exception
+                    )
+                );
+            }
         });
 
         $this->queue[] = $suspension = getSuspension();
@@ -250,7 +260,6 @@ class Connection
                 $this->sendHandshakeResponse();
                 return;
             }
-
 
             if ($this->step == Connection::STEP_HANDSHAKE_RESPONSE) {
                 $this->handleSwitchRequest($content);
@@ -345,6 +354,7 @@ class Connection
                 Capabilities::CLIENT_PLUGIN_AUTH |
                 Capabilities::CLIENT_CONNECT_WITH_DB |
                 Capabilities::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
+                Capabilities::CLIENT_TRANSACTIONS |
                 Capabilities::CLIENT_RESERVED2 |
                 Capabilities::CLIENT_DEPRECATE_EOF,
             4
@@ -414,6 +424,11 @@ class Connection
         if (is_array($packet)) {
             $packet = implode('', $packet);
         }
+
+        if (strlen($packet) > 0xffffff) {
+            throw new Exception("Packet too large.");
+        }
+
         try {
             $this->stream->write($this->header($packet) . $packet);
         } catch (ConnectionException $e) {
@@ -530,20 +545,10 @@ class Connection
         $suspension = array_shift($this->queue);
         $statement  = array_shift($this->statements);
         try {
-            Coroutine::resume($suspension, $statement);
+            Coroutine::resume($suspension, $statement->eof($eofPacket));
         } catch (Throwable $e) {
-            Output::error($e->getMessage());
         }
-        $this->resetSequenceId();
         $this->waitGroup->done();
-    }
-
-    /**
-     * @return void
-     */
-    protected function resetSequenceId(): void
-    {
-        $this->sequenceId = -1;
     }
 
     /**
@@ -555,14 +560,21 @@ class Connection
     {
         if ($this->step === Connection::STEP_AUTH_SWITCH_RESPONSE) {
             $this->step = Connection::STEP_ESTABLISHED;
-            $this->resetSequenceId();
             $this->handshake = true;
             try {
                 Coroutine::resume(array_shift($this->queue), true);
             } catch (Throwable $e) {
-                Output::error($e->getMessage());
             }
+            return;
         }
+
+        $suspension = array_shift($this->queue);
+        $statement  = array_shift($this->statements);
+        try {
+            Coroutine::resume($suspension, $statement->ok($okPacket));
+        } catch (Throwable $e) {
+        }
+        $this->waitGroup->done();
     }
 
     /**
@@ -592,9 +604,9 @@ class Connection
      */
     protected function onErrPacket(ErrPacket $errPacket): void
     {
-        $this->resetSequenceId();
         $suspension = array_shift($this->queue);
         $statement  = array_shift($this->statements);
+        $statement->err($errPacket);
         $suspension->throw(new Exception($errPacket->msg, $errPacket->code));
         $this->waitGroup->done();
     }
@@ -607,6 +619,49 @@ class Connection
     public function handleQueryResponseText(string $content): void
     {
         $this->statements[0]->filling($content);
+    }
+
+    /**
+     * @return void
+     */
+    public function close(): void
+    {
+        $this->stream->close();
+    }
+
+    /**
+     * @return int
+     */
+    public function getCapabilities(): int
+    {
+        return $this->clientCapabilities;
+    }
+
+    /**
+     * @param Closure $closure
+     *
+     * @return void
+     * @throws Throwable
+     */
+    public function transaction(Closure $closure): void
+    {
+        $this->beginTransaction();
+        try {
+            $closure();
+            $this->commit();
+        } catch (Throwable $e) {
+            $this->rollback();
+            throw $e;
+        }
+    }
+
+    /**
+     * @return void
+     * @throws \Ripple\App\MySQL\Exception\Exception
+     */
+    public function beginTransaction(): void
+    {
+        $this->query('START TRANSACTION;');
     }
 
     /**
@@ -644,13 +699,22 @@ class Connection
             throw new Exception("Connection not established.");
         }
 
+        $suspension    = getSuspension();
+        $timeDelay     = $this->timeout > 0 ? delay(static function () use ($suspension, &$timeout) {
+            $timeout = true;
+            $suspension->throw(new Exception("Query execution timeout."));
+        }, $this->timeout) : null;
+
         $this->waitGroup->wait();
         $this->waitGroup->add();
         $this->statements[] = $statement;
-        $this->queue[]      = $suspension = getSuspension();
+        $this->queue[] = $suspension;
         $this->comQuery($statement->renderQueryString());
+
         try {
-            return Coroutine::suspend($suspension);
+            $result = Coroutine::suspend($suspension);
+            $timeDelay && cancel($timeDelay);
+            return $result;
         } catch (Throwable $e) {
             throw new Exception($e->getMessage(), $e->getCode(), $e);
         }
@@ -664,6 +728,7 @@ class Connection
      */
     public function comQuery(string $command): bool
     {
+        $this->resetSequenceId();
         $this->sendPacket("\x03{$command}");
         return true;
     }
@@ -671,8 +736,26 @@ class Connection
     /**
      * @return void
      */
-    public function close(): void
+    protected function resetSequenceId(): void
     {
-        $this->stream->close();
+        $this->sequenceId = -1;
+    }
+
+    /**
+     * @return void
+     * @throws \Ripple\App\MySQL\Exception\Exception
+     */
+    public function commit(): void
+    {
+        $this->query('COMMIT;');
+    }
+
+    /**
+     * @return void
+     * @throws \Ripple\App\MySQL\Exception\Exception
+     */
+    public function rollback(): void
+    {
+        $this->query('ROLLBACK;');
     }
 }

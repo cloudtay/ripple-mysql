@@ -1,10 +1,23 @@
 <?php declare(strict_types=1);
+/**
+ * Copyright © 2024 cclilshy
+ * Email: jingnigg@gmail.com
+ *
+ * This software is licensed under the MIT License.
+ * For full license details, please visit: https://opensource.org/licenses/MIT
+ *
+ * By using this software, you agree to the terms of the license.
+ * Contributions, suggestions, and feedback are always welcome!
+ */
 
 namespace Ripple\App\MySQL\Data;
 
 use Revolt\EventLoop\Suspension;
 use Ripple\App\MySQL\Connection;
 use Ripple\App\MySQL\Constant\Capabilities;
+use Ripple\App\MySQL\Packet\EofPacket;
+use Ripple\App\MySQL\Packet\ErrPacket;
+use Ripple\App\MySQL\Packet\OkPacket;
 use Ripple\App\MySQL\StreamConsume\Decode;
 
 use function addslashes;
@@ -17,30 +30,28 @@ use function strval;
 
 class Statement
 {
+    /*** @var \Ripple\App\MySQL\Packet\OkPacket */
+    public OkPacket $okPacket;
+    /*** @var \Ripple\App\MySQL\Packet\ErrPacket */
+    public ErrPacket $errPacket;
+    /*** @var \Ripple\App\MySQL\Packet\EofPacket */
+    public EofPacket $eofPacket;
     /*** @var \Ripple\App\MySQL\Data\Column[] $columns */
     private array $columns = [];
-
     /*** @var array */
     private array $data = [];
-
     /*** @var array */
     private array $dataKv = [];
-
     /*** @var int */
     private int $columnsCount;
-
     /*** @var int */
     private int $cursor = 0;
-
     /*** @var array */
     private array $params = [];
-
     /*** @var int */
     private int $columnsCounter = 0;
-
     /*** @var int */
     private int $rowsCounter = 0;
-
     /**
      * @var \Revolt\EventLoop\Suspension
      */
@@ -265,5 +276,40 @@ class Statement
         }
 
         return "'" . addslashes($value) . "'";
+    }
+
+    /**
+     * @param \Ripple\App\MySQL\Packet\OkPacket $okPacket
+     *
+     * @return Statement
+     */
+    public function ok(OkPacket $okPacket): Statement
+    {
+        $this->okPacket    = $okPacket;
+        $this->rowsCounter = $okPacket->affectedRows;
+        return $this;
+    }
+
+
+    /**
+     * @param \Ripple\App\MySQL\Packet\ErrPacket $errPacket
+     *
+     * @return Statement
+     */
+    public function err(ErrPacket $errPacket): Statement
+    {
+        $this->errPacket = $errPacket;
+        return $this;
+    }
+
+    /**
+     * @param \Ripple\App\MySQL\Packet\EofPacket $eofPacket
+     *
+     * @return Statement
+     */
+    public function eof(EofPacket $eofPacket): Statement
+    {
+        $this->eofPacket = $eofPacket;
+        return $this;
     }
 }

@@ -13,6 +13,8 @@
   ],
   "require-dev": {
     "cloudtay/ripple": "0.8.x-dev",
+    "cloudtay/ripple-http": "dev-main",
+    "cloudtay/ripple-websocket": "dev-main",
     "friendsofphp/php-cs-fixer": "^3.64"
   }
 }

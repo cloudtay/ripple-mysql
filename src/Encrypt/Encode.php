@@ -1,4 +1,14 @@
 <?php declare(strict_types=1);
+/**
+ * Copyright © 2024 cclilshy
+ * Email: jingnigg@gmail.com
+ *
+ * This software is licensed under the MIT License.
+ * For full license details, please visit: https://opensource.org/licenses/MIT
+ *
+ * By using this software, you agree to the terms of the license.
+ * Contributions, suggestions, and feedback are always welcome!
+ */
 
 namespace Ripple\App\MySQL\Encrypt;
 
@@ -45,9 +55,9 @@ class Encode
      */
     public static function sha2Password(string $password, string $salt): string
     {
-        $digestStage1 = self::hashSHA256($password);
-        $digestStage2 = self::hashSHA256($digestStage1);
-        $saltStage1   = self::hashSHA256($digestStage2 . substr($salt, 0, 20));
+        $digestStage1 = Encode::hashSHA256($password);
+        $digestStage2 = Encode::hashSHA256($digestStage1);
+        $saltStage1   = Encode::hashSHA256($digestStage2 . substr($salt, 0, 20));
         return $digestStage1 ^ $saltStage1;
     }
 
