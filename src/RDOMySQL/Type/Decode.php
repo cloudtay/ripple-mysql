@@ -10,7 +10,7 @@
  * Contributions, suggestions, and feedback are always welcome!
  */
 
-namespace Ripple\RDOMySQL\StreamConsume;
+namespace Ripple\RDOMySQL\Type;
 
 use InvalidArgumentException;
 
@@ -30,12 +30,12 @@ use function unpack;
  */
 class Decode
 {
-    public const INT_1 = 0x01; // 1 字节
-    public const INT_2 = 0x02; // 2 字节
-    public const INT_3 = 0x03; // 3 字节
-    public const INT_4 = 0x04; // 4 字节
-    public const INT_6 = 0x06; // 6 字节
-    public const INT_8 = 0x08; // 8 字节
+    public const INT_1 = 0x01;
+    public const INT_2 = 0x02;
+    public const INT_3 = 0x03;
+    public const INT_4 = 0x04;
+    public const INT_6 = 0x06;
+    public const INT_8 = 0x08;
 
     /**
      * Reads a fixed-length integer from content

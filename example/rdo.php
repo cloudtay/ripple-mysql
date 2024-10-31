@@ -11,8 +11,8 @@
  * Contributions, suggestions, and feedback are always welcome!
  */
 
-use Ripple\RDO;
 use Ripple\Promise;
+use Ripple\RDO;
 
 use function Co\async;
 use function Co\wait;

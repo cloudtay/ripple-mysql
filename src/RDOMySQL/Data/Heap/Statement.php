@@ -20,7 +20,7 @@ use Ripple\RDOMySQL\Data\ResultSet;
 use Ripple\RDOMySQL\Exception\Exception;
 use Ripple\RDOMySQL\Packet\ErrPacket;
 use Ripple\RDOMySQL\Packet\StatementOkPacket;
-use Ripple\RDOMySQL\StreamConsume\Encode;
+use Ripple\RDOMySQL\Type\Encode;
 use Throwable;
 
 use function count;
@@ -68,9 +68,9 @@ class Statement implements HeapInterface
         try {
             if (!isset($this->statementOk)) {
                 if ($content[0] === "\xff") {
-                    throw new Exception(ErrPacket::decode($content)->msg);
+                    throw new Exception(ErrPacket::fromString($content)->msg);
                 }
-                $this->statementOk = StatementOkPacket::decode($content);
+                $this->statementOk = StatementOkPacket::fromString($content);
             } elseif ($this->paramsCounter < $this->statementOk->paramsCount) {
                 $this->fillingParam($content);
             } elseif ($this->columnsCounter < $this->statementOk->columnsCount) {
@@ -94,7 +94,7 @@ class Statement implements HeapInterface
      */
     protected function fillingParam(string $content): void
     {
-        $this->params[] = Column::decode($content);
+        $this->params[] = Column::fromString($content);
         $this->paramsCounter++;
     }
 
@@ -108,7 +108,7 @@ class Statement implements HeapInterface
      */
     protected function fillingColumn(string $content): void
     {
-        $this->columns[] = Column::decode($content);
+        $this->columns[] = Column::fromString($content);
         $this->columnsCounter++;
     }
 

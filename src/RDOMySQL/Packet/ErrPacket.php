@@ -12,10 +12,11 @@
 
 namespace Ripple\RDOMySQL\Packet;
 
+use Ripple\RDOMySQL\Connection;
 use Ripple\RDOMySQL\Constant\Capabilities;
-use Ripple\RDOMySQL\StreamConsume\Decode;
+use Ripple\RDOMySQL\Type\Decode;
 
-readonly class ErrPacket
+class ErrPacket
 {
     /**
      * @param int         $title
@@ -38,11 +39,11 @@ readonly class ErrPacket
      *
      * @return \Ripple\RDOMySQL\Packet\ErrPacket
      */
-    public static function decode(string $content): ErrPacket
+    public static function fromString(string &$content): ErrPacket
     {
         $title = Decode::FixedLengthInteger($content, 1);
         $code  = Decode::FixedLengthInteger($content, 2);
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_PROTOCOL_41->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_PROTOCOL_41->value) {
             $stateMarker = Decode::FixedLengthString($content, 1);
             $sqlState    = Decode::FixedLengthString($content, 5);
         }

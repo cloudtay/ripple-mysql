@@ -13,7 +13,7 @@
 namespace Ripple\RDOMySQL\Data;
 
 use Ripple\RDOMySQL\Data\Heap\ResultSet\ProtocolBinary;
-use Ripple\RDOMySQL\StreamConsume\Decode;
+use Ripple\RDOMySQL\Type\Decode;
 
 use function floatval;
 use function gettype;
@@ -23,7 +23,7 @@ use function substr;
 /**
  * @see https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_com_query_response_text_resultset_column_definition.html
  */
-readonly class Column
+class Column
 {
     /**
      * @param string                           $catalog
@@ -98,15 +98,15 @@ readonly class Column
      */
     public function parseBinary(string &$content): string|int|float
     {
-        return ProtocolBinary::decode($content, $this->type);
+        return ProtocolBinary::fromString($content, $this->type);
     }
 
     /**
      * @param string $content
      *
-     * @return \Ripple\Data\Column
+     * @return \Ripple\RDOMySQL\Data\Column
      */
-    public static function decode(string &$content): Column
+    public static function fromString(string &$content): Column
     {
         $catalog                   = Decode::LengthEncodedString($content);
         $schema                    = Decode::LengthEncodedString($content);
@@ -138,7 +138,7 @@ readonly class Column
     }
 
     /**
-     * @return string[]
+     * @return array
      */
     public function toArray(): array
     {

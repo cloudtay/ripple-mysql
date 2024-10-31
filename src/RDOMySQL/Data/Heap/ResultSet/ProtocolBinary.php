@@ -14,8 +14,8 @@ namespace Ripple\RDOMySQL\Data\Heap\ResultSet;
 
 use InvalidArgumentException;
 use Ripple\RDOMySQL\Data\Type;
-use Ripple\RDOMySQL\StreamConsume\Decode;
-use Ripple\RDOMySQL\StreamConsume\Encode;
+use Ripple\RDOMySQL\Type\Decode;
+use Ripple\RDOMySQL\Type\Encode;
 
 use function intval;
 use function pack;
@@ -33,7 +33,7 @@ class ProtocolBinary
      *
      * @return string|int|float
      */
-    public static function decode(string &$content, Type $type): string|int|float
+    public static function fromString(string &$content, Type $type): string|int|float
     {
         return match ($type) {
             Type::STRING, Type::VARCHAR, Type::VAR_STRING, Type::ENUM, Type::SET,

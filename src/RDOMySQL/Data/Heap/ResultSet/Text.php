@@ -21,7 +21,7 @@ use Ripple\RDOMySQL\Exception\Exception;
 use Ripple\RDOMySQL\Packet\EofPacket;
 use Ripple\RDOMySQL\Packet\ErrPacket;
 use Ripple\RDOMySQL\Packet\OkPacket;
-use Ripple\RDOMySQL\StreamConsume\Decode;
+use Ripple\RDOMySQL\Type\Decode;
 
 use function in_array;
 
@@ -63,19 +63,19 @@ class Text extends ResultSet implements HeapInterface
     {
         if (in_array($content[0], ["\0", "\xfe"])) {
             if ($content[0] === "\xfe") {
-                $this->eofPacket = EofPacket::decode($content);
+                $this->eofPacket = EofPacket::fromString($content);
             } elseif ($content[0] === "\0") {
-                $this->okPacket = OkPacket::decode($content);
+                $this->okPacket = OkPacket::fromString($content);
             }
             return true;
         } elseif ($content[0] === "\xff") {
-            throw new Exception(ErrPacket::decode($content)->msg);
+            throw new Exception(ErrPacket::fromString($content)->msg);
         }
 
 
         if (!isset($this->columnsCount)) {
             // Metadata is not supported by default
-            if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_OPTIONAL_RESULTSET_METADATA->value) {
+            if (Connection::capabilities() & Capabilities::CLIENT_OPTIONAL_RESULTSET_METADATA->value) {
                 $metadataFollows = Decode::FixedLengthInteger($content, 1);
             }
 
@@ -105,7 +105,7 @@ class Text extends ResultSet implements HeapInterface
      */
     protected function fillingColumn(string $content): void
     {
-        $this->columns[] = Column::decode($content);
+        $this->columns[] = Column::fromString($content);
         $this->columnsCounter++;
     }
 

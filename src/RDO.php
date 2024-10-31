@@ -12,17 +12,17 @@
 
 namespace Ripple;
 
+use PDO;
 use PDOException;
 use PDOStatement;
-use Ripple\PDORepeater\PDORepeater;
-use Ripple\PDORepeater\RDOStatement;
 use Ripple\RDOMySQL\Connection;
 use Ripple\RDOMySQL\Exception\Exception;
+use Ripple\RDOMySQL\Repeater\RDOStatement;
 
 use function preg_match_all;
 use function str_replace;
 
-class RDO extends PDORepeater
+class RDO extends PDO
 {
     /*** @var \Ripple\RDOMySQL\Connection */
     protected Connection $connection;
@@ -37,12 +37,11 @@ class RDO extends PDORepeater
     public function __construct(string $dsn, string $username = '', string $passwd = '', array $options = [])
     {
         try {
-            $this->connection = new Connection(
-                Config::formString($dsn, $username, $passwd),
-                $username,
-                $passwd,
-                $options
-            );
+            $config           = Config::formString($dsn, $username, $passwd);
+            $this->connection = match ($config->driver) {
+                'mysql' => new Connection($config, $username, $passwd, $options),
+                default => throw new PDOException('Unsupported driver: ' . $config->driver),
+            };
         } catch (Exception $e) {
             throw new PDOException($e->getMessage(), $e->getCode());
         }
@@ -85,5 +84,44 @@ class RDO extends PDORepeater
         } catch (Exception $e) {
             throw new PDOException($e->getMessage(), $e->getCode());
         }
+    }
+
+    /**
+     * @return bool
+     */
+    public function beginTransaction(): bool
+    {
+        try {
+            $this->connection->beginTransaction();
+        } catch (Exception $e) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @return bool
+     */
+    public function commit(): bool
+    {
+        try {
+            $this->connection->commit();
+        } catch (Exception $e) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @return bool
+     */
+    public function rollBack(): bool
+    {
+        try {
+            $this->connection->rollBack();
+        } catch (Exception $e) {
+            return false;
+        }
+        return true;
     }
 }

@@ -12,10 +12,11 @@
 
 namespace Ripple\RDOMySQL\Packet;
 
+use Ripple\RDOMySQL\Connection;
 use Ripple\RDOMySQL\Constant\Capabilities;
-use Ripple\RDOMySQL\StreamConsume\Decode;
+use Ripple\RDOMySQL\Type\Decode;
 
-readonly class EofPacket
+class EofPacket
 {
     /**
      * @param int $title
@@ -34,10 +35,10 @@ readonly class EofPacket
      *
      * @return \Ripple\RDOMySQL\Packet\EofPacket
      */
-    public static function decode(string $content): EofPacket
+    public static function fromString(string &$content): EofPacket
     {
         $title = Decode::FixedLengthInteger($content, 1);
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_PROTOCOL_41->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_PROTOCOL_41->value) {
             $warningCount = Decode::FixedLengthInteger($content, 2);
             $serverStatus = Decode::FixedLengthInteger($content, 2);
         }

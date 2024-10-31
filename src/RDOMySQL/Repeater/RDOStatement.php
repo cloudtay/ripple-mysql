@@ -10,7 +10,7 @@
  * Contributions, suggestions, and feedback are always welcome!
  */
 
-namespace Ripple\Repeater;
+namespace Ripple\RDOMySQL\Repeater;
 
 use PDO;
 use PDOStatement;
@@ -20,7 +20,7 @@ use Ripple\RDOMySQL\Exception\Exception;
 
 use function array_values;
 
-class RDOStatement extends PDOStatementRepeater
+class RDOStatement extends PDOStatement
 {
     /*** @var \Ripple\RDOMySQL\Data\ResultSet */
     private ResultSet $resultSet;

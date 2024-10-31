@@ -12,12 +12,13 @@
 
 namespace Ripple\RDOMySQL\Packet;
 
+use Ripple\RDOMySQL\Connection;
 use Ripple\RDOMySQL\Constant\Capabilities;
-use Ripple\RDOMySQL\StreamConsume\Decode;
+use Ripple\RDOMySQL\Type\Decode;
 
 use function strlen;
 
-readonly class StatementOkPacket
+class StatementOkPacket
 {
     /**
      * @param int      $code
@@ -44,7 +45,7 @@ readonly class StatementOkPacket
      *
      * @return \Ripple\RDOMySQL\Packet\StatementOkPacket
      */
-    public static function decode(string $content): StatementOkPacket
+    public static function fromString(string &$content): StatementOkPacket
     {
         $code         = Decode::FixedLengthInteger($content, 1);
         $stmtId       = Decode::FixedLengthInteger($content, 4);
@@ -55,7 +56,7 @@ readonly class StatementOkPacket
             $warningCount = Decode::FixedLengthInteger($content, 2);
         }
 
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_OPTIONAL_RESULTSET_METADATA->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_OPTIONAL_RESULTSET_METADATA->value) {
             $metadata = Decode::FixedLengthInteger($content, 1);
         }
         return new StatementOkPacket($code, $stmtId, $columnsCount, $paramsCount, $reserved, $warningCount ?? null, $metadata ?? null);

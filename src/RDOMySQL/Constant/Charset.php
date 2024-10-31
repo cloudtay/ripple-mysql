@@ -33,7 +33,7 @@ enum Charset: int
     /**
      * @param string $charset
      *
-     * @return \Ripple\Constant\Charset
+     * @return \Ripple\RDOMySQL\Constant\Charset
      */
     public static function fromString(string $charset): Charset
     {

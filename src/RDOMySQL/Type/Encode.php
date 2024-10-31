@@ -10,7 +10,7 @@
  * Contributions, suggestions, and feedback are always welcome!
  */
 
-namespace Ripple\RDOMySQL\StreamConsume;
+namespace Ripple\RDOMySQL\Type;
 
 use InvalidArgumentException;
 

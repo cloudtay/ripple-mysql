@@ -19,7 +19,7 @@ use Ripple\RDOMySQL\Exception\Exception;
 use Ripple\RDOMySQL\Packet\EofPacket;
 use Ripple\RDOMySQL\Packet\ErrPacket;
 use Ripple\RDOMySQL\Packet\OkPacket;
-use Ripple\RDOMySQL\StreamConsume\Decode;
+use Ripple\RDOMySQL\Type\Decode;
 
 use function intval;
 use function substr;
@@ -50,14 +50,14 @@ class Binary extends ResultSet implements HeapInterface
     public function filling(string $content): bool
     {
         if ($content[0] === "\xfe") {
-            $this->eofPacket = EofPacket::decode($content);
+            $this->eofPacket = EofPacket::fromString($content);
             return true;
         } elseif ($content[0] === "\xff") {
-            throw new Exception(($this->errPacket = ErrPacket::decode($content))->msg);
+            throw new Exception(($this->errPacket = ErrPacket::fromString($content))->msg);
         } elseif ($content[0] === "\x00") {
             // Step 1: Parse column count if not set
             if (!isset($this->columnsCount)) {
-                $this->okPacket = OkPacket::decode($content);
+                $this->okPacket = OkPacket::fromString($content);
                 return true;
             }
         } elseif (!isset($this->columnsCount)) {
@@ -67,7 +67,7 @@ class Binary extends ResultSet implements HeapInterface
 
         // Step 2: Parse columns metadata
         if ($this->columnsCounter < $this->columnsCount) {
-            $this->columns[] = Column::decode($content);
+            $this->columns[] = Column::fromString($content);
             $this->columnsCounter++;
             return false;
         }

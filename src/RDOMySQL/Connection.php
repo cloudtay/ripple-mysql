@@ -437,13 +437,13 @@ class Connection
         }
 
         $packet   = [];
-        $packet[] = Encode::FixedLengthInteger(Capabilities::RIPPLE_CAPABILITIES->value, 4);
+        $packet[] = Encode::FixedLengthInteger(Connection::capabilities(), 4);
 
         $packet[] = $maxPacketSize = Encode::FixedLengthInteger(0x40000000, 4);
         $packet[] = $charset = Encode::FixedLengthInteger($this->clientCharset->value, 1);
         $packet[] = $unused = str_repeat("\0", 23);
         $packet[] = $username = Encode::NullTerminatedString($this->config->user);
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA->value) {
             $packet[] = $authData = Encode::LengthEncodedString($this->generateAuthData($this->config->password));
         } else {
             $packet[] = $authResponseLength = Encode::FixedLengthInteger(
@@ -453,23 +453,37 @@ class Connection
             $packet[] = $authData;
         }
 
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_CONNECT_WITH_DB->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_CONNECT_WITH_DB->value) {
             $packet[] = $database = Encode::NullTerminatedString($this->config->database);
         }
 
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_PLUGIN_AUTH->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_PLUGIN_AUTH->value) {
             $packet[] = $pluginName = Encode::NullTerminatedString($this->authPluginName);
         }
 
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_CONNECT_ATTRS->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_CONNECT_ATTRS->value) {
             //TODO: Implement
         }
 
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_ZSTD_COMPRESSION_ALGORITHM->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_ZSTD_COMPRESSION_ALGORITHM->value) {
             //TODO: Implement
         }
 
         $this->sendPacket($packet);
+    }
+
+    /**
+     * @return int
+     */
+    public static function capabilities(): int
+    {
+        return Capabilities::CLIENT_PROTOCOL_41->value |
+               Capabilities::CLIENT_PLUGIN_AUTH->value |
+               Capabilities::CLIENT_CONNECT_WITH_DB->value |
+               Capabilities::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA->value |
+               Capabilities::CLIENT_TRANSACTIONS->value |
+               Capabilities::CLIENT_RESERVED2->value |
+               Capabilities::CLIENT_DEPRECATE_EOF->value;
     }
 
     /**
@@ -622,6 +636,44 @@ class Connection
     }
 
     /**
+     * @param Closure $closure
+     *
+     * @return void
+     * @throws Throwable
+     */
+    public function transaction(Closure $closure): void
+    {
+        $this->beginTransaction();
+        try {
+            $closure();
+            $this->commit();
+        } catch (Throwable $e) {
+            $this->rollback();
+            throw $e;
+        }
+    }
+
+    /**
+     * @return void
+     * @throws \Ripple\RDOMySQL\Exception\Exception
+     */
+    public function beginTransaction(): void
+    {
+        $this->query('START TRANSACTION;');
+    }
+
+    /**
+     * @param string $sql
+     *
+     * @return ResultSet
+     * @throws \Ripple\RDOMySQL\Exception\Exception
+     */
+    public function query(string $sql): ResultSet
+    {
+        return $this->connectionTransaction("\x03{$sql}", new Text($sql, $this));
+    }
+
+    /**
      * @param string|array                             $packet
      * @param \Ripple\RDOMySQL\Data\Heap\HeapInterface $heap
      *
@@ -658,44 +710,6 @@ class Connection
         } finally {
             $this->unWaitGroup();
         }
-    }
-
-    /**
-     * @param Closure $closure
-     *
-     * @return void
-     * @throws Throwable
-     */
-    public function transaction(Closure $closure): void
-    {
-        $this->beginTransaction();
-        try {
-            $closure();
-            $this->commit();
-        } catch (Throwable $e) {
-            $this->rollback();
-            throw $e;
-        }
-    }
-
-    /**
-     * @return void
-     * @throws \Ripple\RDOMySQL\Exception\Exception
-     */
-    public function beginTransaction(): void
-    {
-        $this->query('START TRANSACTION;');
-    }
-
-    /**
-     * @param string $sql
-     *
-     * @return ResultSet
-     * @throws \Ripple\RDOMySQL\Exception\Exception
-     */
-    public function query(string $sql): ResultSet
-    {
-        return $this->connectionTransaction("\x03{$sql}", new Text($sql, $this));
     }
 
     /**

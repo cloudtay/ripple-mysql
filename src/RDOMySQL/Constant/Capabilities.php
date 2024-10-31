@@ -49,13 +49,4 @@ enum Capabilities: int
     case CLIENT_CAPABILITY_EXTENSION           = (1 << 29); // This flag will be reserved to extend 32-bit functional structures to 64-bit.
     case CLIENT_SSL_VERIFY_SERVER_CERT         = (1 << 30); // Verify the server certificate.
     case CLIENT_REMEMBER_OPTIONS               = (1 << 31); // Do not reset options after connection failure.
-
-    case RIPPLE_CAPABILITIES =
-    Capabilities::CLIENT_PROTOCOL_41->value |
-    Capabilities::CLIENT_PLUGIN_AUTH->value |
-    Capabilities::CLIENT_CONNECT_WITH_DB->value |
-    Capabilities::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA->value |
-    Capabilities::CLIENT_TRANSACTIONS->value |
-    Capabilities::CLIENT_RESERVED2->value |
-    Capabilities::CLIENT_DEPRECATE_EOF->value;
 }

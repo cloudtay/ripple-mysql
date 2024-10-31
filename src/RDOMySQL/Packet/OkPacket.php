@@ -12,10 +12,11 @@
 
 namespace Ripple\RDOMySQL\Packet;
 
+use Ripple\RDOMySQL\Connection;
 use Ripple\RDOMySQL\Constant\Capabilities;
-use Ripple\RDOMySQL\StreamConsume\Decode;
+use Ripple\RDOMySQL\Type\Decode;
 
-readonly class OkPacket
+class OkPacket
 {
     /**
      * @param int|null    $title
@@ -42,21 +43,21 @@ readonly class OkPacket
      *
      * @return \Ripple\RDOMySQL\Packet\OkPacket
      */
-    public static function decode(string $content): OkPacket
+    public static function fromString(string &$content): OkPacket
     {
         $title        = Decode::FixedLengthInteger($content, 1);
         $affectedRows = Decode::LengthEncodedInteger($content);
         $insertId     = Decode::LengthEncodedInteger($content);
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_PROTOCOL_41->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_PROTOCOL_41->value) {
             $serverStatus = Decode::FixedLengthInteger($content, 2);
             $warningCount = Decode::FixedLengthInteger($content, 2);
-        } elseif (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_TRANSACTIONS->value) {
+        } elseif (Connection::capabilities() & Capabilities::CLIENT_TRANSACTIONS->value) {
             $serverStatus = Decode::FixedLengthInteger($content, 2);
         }
 
-        if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::CLIENT_SESSION_TRACK->value) {
+        if (Connection::capabilities() & Capabilities::CLIENT_SESSION_TRACK->value) {
             $info = Decode::LengthEncodedString($content);
-            //            if (Capabilities::RIPPLE_CAPABILITIES->value & Capabilities::SERVER_SESSION_STATE_CHANGED->value) {
+            //            if (Connection::capabilities() & Capabilities::SERVER_SESSION_STATE_CHANGED->value) {
             //                $sessionStateChanges = Decode::LengthEncodedString($content);
             //            }
         } else {
