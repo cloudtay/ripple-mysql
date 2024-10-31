@@ -10,7 +10,7 @@
  * Contributions, suggestions, and feedback are always welcome!
  */
 
-namespace Ripple\PDORepeater;
+namespace Ripple\Repeater;
 
 use PDO;
 use PDOStatement;

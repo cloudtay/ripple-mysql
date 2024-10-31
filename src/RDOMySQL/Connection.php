@@ -31,8 +31,8 @@ use Ripple\RDOMySQL\Exception\Exception;
 use Ripple\RDOMySQL\Packet\EofPacket;
 use Ripple\RDOMySQL\Packet\ErrPacket;
 use Ripple\RDOMySQL\Packet\OkPacket;
-use Ripple\RDOMySQL\StreamConsume\Decode;
-use Ripple\RDOMySQL\StreamConsume\Encode;
+use Ripple\RDOMySQL\Type\Decode;
+use Ripple\RDOMySQL\Type\Encode;
 use Ripple\Socket\SocketStream;
 use Ripple\Stream\Exception\ConnectionException;
 use Ripple\Utils\Output;
@@ -61,11 +61,8 @@ class Connection
     // waiting for handshake
     public const STEP_HANDSHAKE = 0;
 
-    // handshake request
-    public const STEP_HANDSHAKE_REQUEST = 1;
-
     // handshake response
-    public const STEP_HANDSHAKE_RESPONSE = 2;
+    public const STEP_FAST_PATH = 2;
 
     // connection established
     public const STEP_ESTABLISHED = 5;
@@ -284,16 +281,12 @@ class Connection
 
             if ($this->step === Connection::STEP_HANDSHAKE) {
                 $this->handleHandshake($content);
-                $this->step = Connection::STEP_HANDSHAKE_REQUEST;
-            }
-
-            if ($this->step === Connection::STEP_HANDSHAKE_REQUEST) {
-                $this->sendHandshakeResponse();
-                $this->step = Connection::STEP_HANDSHAKE_RESPONSE;
+                $this->step = Connection::STEP_FAST_PATH;
                 return;
             }
 
-            if ($this->step == Connection::STEP_HANDSHAKE_RESPONSE) {
+            if ($this->step == Connection::STEP_FAST_PATH) {
+                // auth more data
                 if ($content[0] === "\x01") {
                     $extra = substr($content, 1);
                     if (!$extra = Decode::RestOfPacketString($extra)) {
@@ -354,19 +347,19 @@ class Connection
         if (in_array($content[0], ["\0", "\xfe"])) {
             if (strlen($content) < 9) {
                 try {
-                    Coroutine::resume($this->lockSuspension, EofPacket::decode($content));
+                    Coroutine::resume($this->lockSuspension, EofPacket::fromString($content));
                 } catch (Throwable $e) {
                     Output::warning($e->getMessage());
                 }
             } else {
                 try {
-                    Coroutine::resume($this->lockSuspension, OkPacket::decode($content));
+                    Coroutine::resume($this->lockSuspension, OkPacket::fromString($content));
                 } catch (Throwable $e) {
                     Output::warning($e->getMessage());
                 }
             }
         } elseif ($content[0] === "\xff") {
-            Coroutine::throw($this->lockSuspension, new Exception(ErrPacket::decode($content)->msg));
+            Coroutine::throw($this->lockSuspension, new Exception(ErrPacket::fromString($content)->msg));
         }
     }
 
@@ -426,6 +419,7 @@ class Connection
         } else {
             Decode::NullTerminatedString($content);
         }
+        $this->sendHandshakeResponse();
     }
 
     /**
@@ -571,11 +565,11 @@ class Connection
 
         try {
             $result = $this->heap->filling($content);
-        } catch (Throwable $e) {
-            if (!$e instanceof Exception) {
-                $e = new Exception($e->getMessage());
+        } catch (Throwable $exception) {
+            if (!$exception instanceof Exception) {
+                $exception = new Exception($exception->getMessage());
             }
-            Coroutine::throw($this->lockSuspension, $e);
+            Coroutine::throw($this->lockSuspension, $exception);
             return;
         }
 
