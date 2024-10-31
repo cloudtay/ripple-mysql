@@ -24,6 +24,9 @@ composer require cloudtay/ripple-rdo
 ```php
 include __DIR__ . '/../vendor/autoload.php';
 
+/**
+ * @var \PDO $rdo 已继承不冲突
+ */
 $rdo = new \Ripple\RDO(
     'mysql:host=127.0.0.1;port=3306;dbname=hello_world;charset=utf8',
     'benchmarkdbuser',
